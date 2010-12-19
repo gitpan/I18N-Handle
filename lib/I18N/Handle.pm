@@ -6,7 +6,7 @@ use I18N::Handle::Base;
 use File::Find::Rule;
 use Locale::Maketext::Lexicon ();
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 has base => ( is => 'rw' );
 
@@ -32,6 +32,8 @@ has langs => (
     );  # can speaks
 
 has current => ( is => 'rw' );  # current language
+
+our $singleton;
 
 sub BUILDARGS {
     my $self = shift;
@@ -98,6 +100,11 @@ sub BUILD {
 
     __PACKAGE__->install_global_loc( $loc_name , $self->base->get_dynamicLH );
     return $self;
+}
+
+sub singleton {
+    my ($class,%args) = @_;
+    return $singleton ||= $class->new( %args );
 }
 
 # translate zh_TW => zh-tw
@@ -191,7 +198,7 @@ sub install_global_loc {
 }
 
 
-# __PACKAGE__->meta->make_immutable();
+__PACKAGE__->meta->make_immutable;
 1;
 __END__
 
@@ -217,7 +224,7 @@ option C<import> takes the same arguments as L<Locale::Maketext::Lexicon> takes.
 it's I<language> => [ I<format> => I<source> ].
     
     use I18N::Handle;
-    my $handle = I18N::Handle->new( 
+    my $hl = I18N::Handle->new( 
                 import => {
                         en => [ Gettext => 'po/en.po' ],
                         fr => [ Gettext => 'po/fr.po' ],
@@ -228,7 +235,7 @@ Or a simple way to import gettext po files:
 This will transform the args to the args that C<import> option takes:
 
     use I18N::Handle;
-    my $handle = I18N::Handle->new( 
+    my $hl = I18N::Handle->new( 
                 Gettext => {
                         en => 'po/en.po',
                         fr => 'po/fr.po',
@@ -238,32 +245,68 @@ This will transform the args to the args that C<import> option takes:
 
     print _('Hello world');
 
-    $handle->speak( 'fr' );
-    $handle->speak( 'jp' );
-    $handle->speaking;  # return 'jp'
+    $hl->speak( 'fr' );
+    $hl->speak( 'jp' );
+    $hl->speaking;  # return 'jp'
 
-    my @langs = $handle->can_speak();  # return 'en', 'fr', 'jp'
+    my @langs = $hl->can_speak();  # return 'en', 'fr', 'jp'
 
-or
+=head1 USE CASES
 
-    $handle = I18N::Handle->new( 
+=head2 Handling po files
+
+    $hl = I18N::Handle->new( 
             po => 'path/to/po',
             style => 'gettext'          # use gettext style format (default)
                 )->speak( 'en' );
 
     print _('Hello world');
 
-or
 
-    $handle = I18N::Handle->new(
+=head2 Handling locale
+
+If you need to bind the locale directory structure like this:
+
+    po/en/LC_MESSAGES/app.po
+    po/en/LC_MESSAGES/app.mo
+    po/zh_tw/LC_MESSAGES/app.po
+    po/zh_tw/LC_MESSAGES/app.mo
+
+You can just pass the C<locale> option:
+
+    $hl = I18N::Handle->new(
             locale => 'path/to/locale'
             )->speak( 'en_US' );
 
+
+=head2 Singleton
+
+If you need a singleton L<I18N::Handle>, this is a helper function to return
+the singleton object:
+
+    $hl = I18N::Handle->singleton( locale => 'path/to/locale' );
+
+In your applications, might be like this:
+
+    sub get_i18n {
+        my $class = shift;
+        return I18N::Handle->singleton( ... options ... )
+    }
+
+
+=head2 Connect to a remote i18n server
+
+B<not implemented yet>
 
 Connect to a translation server:
 
     $handle = I18N::Handle->new( 
             server => 'translate.me' )->speak( 'en_US' );
+
+
+=head2 Binding with database
+
+B<not implemented yet>
 
 Connect to a database:
 
@@ -271,10 +314,13 @@ Connect to a database:
             dsn => 'DBI:mysql:database=$database;host=$hostname;port=$port;'
             );
 
+=head2 Binding with Google translation service
+
+B<not implemented yet>
+
 Connect to google translation:
 
     $handle = I18N::Handle->new( google => "" );
-
 
 =head1 OPTIONS
 
@@ -293,7 +339,7 @@ Format could be I<Gettext | Msgcat | Slurp | Tie>.
                 });
     $hl->speak( 'en' );
 
-=item po => 'I<path>' | [ I<path1> , I<path2> ]
+=item C<po> => 'I<path>' | [ I<path1> , I<path2> ]
 
 Suppose you have these files:
 
@@ -308,11 +354,10 @@ will be found. can you can get these langauges:
 
     [ en , zh-tw ]
 
-=item locale => 'path' | [ path1 , path2 ]
+=item C<locale> => 'path' | [ path1 , path2 ]
 
 
-=item import => Arguments to L<Locale::Maketext::Lexicon>
-
+=item C<import> => Arguments to L<Locale::Maketext::Lexicon>
 
 =back
 
@@ -320,20 +365,24 @@ will be found. can you can get these langauges:
 
 =over 4
 
-=item style => I<style>  ... (Optional)
+=item C<style> => I<style>  ... (Optional)
 
 The style could be C<gettext>.
 
-=item loc => I<global loc function name>  (Optional)
+=item C<loc> => I<global loc function name>  (Optional)
 
 The default loc function name is C<_>.
 
 =back
 
-
 =head1 PUBLIC METHODS 
 
 =head2 new
+
+=head2 singleton( I<options> )
+
+If you need a singleton L<I18N::Handle>, this is a helper function to return
+the singleton object.
 
 =head2 speak( I<language> )
 
