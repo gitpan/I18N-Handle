@@ -8,9 +8,17 @@ __***THIS MODULE IS STILL IN DEVELOPMENT***__
 
 [I18N::Handle](http://search.cpan.org/perldoc?I18N::Handle) is a common handler for web frameworks and applications.
 
-You can use [App::I18N](http://search.cpan.org/perldoc?App::I18N) to generate po/mo files, then use this module 
+I18N::Handle also provides exporting a global loc function to make localization, 
+the default loc function name is `"_"`. To change the exporting loc function name
+, please use `loc` option.
 
-to handle these languages.
+The difference between I18N::Handle and [Locale::Maketext](http://search.cpan.org/perldoc?Locale::Maketext) is that
+I18N::Handle automatically does most things for you, and it provides simple API
+like `speak`, `can_speak` instead of `get_handle`, `languages`.
+
+To generate po/mo files, [App::I18N](http://search.cpan.org/perldoc?App::I18N) is an utility for this, App::I18N is a
+command-line tool for parsing, exporting, managing, editing, translating i18n
+messages. See also [App::I18N](http://search.cpan.org/perldoc?App::I18N).
 
 # SYNOPSIS
 
@@ -91,9 +99,24 @@ will be found. can you can get these langauges:
 
 The style could be `gettext`.
 
-- `loc` => _global loc function name_  (Optional)
+- `loc` => _global loc function name_ (Optional)
 
-The default loc function name is `_`.
+The default global loc function name is `_`. 
+
+    loc => 'loc'
+
+- `loc_func` => _CodeRef_  (Optional)
+
+Use a custom global localization function instead of default localization
+function.
+
+    loc_func => sub {
+            my ($self,$lang_handle) = @_;
+
+            ...
+
+            return $text;
+    }
 
 # PUBLIC METHODS 
 
@@ -159,10 +182,10 @@ setup fallback language. when speak() fails , fallback to this language.
 
 If you need to bind the locale directory structure like this:
 
-    po/en/LC_MESSAGES/app.po
-    po/en/LC_MESSAGES/app.mo
-    po/zh_tw/LC_MESSAGES/app.po
-    po/zh_tw/LC_MESSAGES/app.mo
+    path/to/locale/en/LC_MESSAGES/app.po
+    path/to/locale/en/LC_MESSAGES/app.mo
+    path/to/locale/zh_tw/LC_MESSAGES/app.po
+    path/to/locale/zh_tw/LC_MESSAGES/app.mo
 
 You can just pass the `locale` option:
 

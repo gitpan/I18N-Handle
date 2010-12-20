@@ -6,7 +6,7 @@ use I18N::Handle::Locale;
 use File::Find::Rule;
 use Locale::Maketext::Lexicon ();
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 has base => ( is => 'rw' );
 
@@ -98,12 +98,23 @@ sub BUILD {
     $self->base( I18N::Handle::Locale->new( \%import ) );
     $self->base->init;
 
+
     my $loc_name = $args{'loc'} || '_';
 
-    __PACKAGE__->install_global_loc( $loc_name , $self->base->get_dynamicLH );
+    if( $args{loc_func} ) {
+        my $loc_func = $args{loc_func};
+        {
+            no strict 'refs';
+            no warnings 'redefine';
+            *{ '::'.$loc_name } = sub { 
+                return $loc_func->( $self, $self->base->get_dynamicLH );
+            };
+        }
+    } else {
+        __PACKAGE__->install_global_loc( $loc_name , $self->base->get_dynamicLH );
+    }
     return $self;
 }
-
 
 
 sub singleton {
@@ -208,7 +219,6 @@ sub install_global_loc {
     {
         no strict 'refs';
         no warnings 'redefine';
-        # *_ = $loc_method;
         *{ '::'.$loc_name } = $loc_method;
     }
 }
@@ -228,9 +238,17 @@ B<***THIS MODULE IS STILL IN DEVELOPMENT***>
 
 L<I18N::Handle> is a common handler for web frameworks and applications.
 
-You can use L<App::I18N> to generate po/mo files, then use this module 
+I18N::Handle also provides exporting a global loc function to make localization, 
+the default loc function name is C<"_">. To change the exporting loc function name
+, please use C<loc> option.
 
-to handle these languages.
+The difference between I18N::Handle and L<Locale::Maketext> is that
+I18N::Handle automatically does most things for you, and it provides simple API
+like C<speak>, C<can_speak> instead of C<get_handle>, C<languages>.
+
+To generate po/mo files, L<App::I18N> is an utility for this, App::I18N is a
+command-line tool for parsing, exporting, managing, editing, translating i18n
+messages. See also L<App::I18N>.
 
 =head1 SYNOPSIS
 
@@ -314,9 +332,24 @@ will be found. can you can get these langauges:
 
 The style could be C<gettext>.
 
-=item C<loc> => I<global loc function name>  (Optional)
+=item C<loc> => I<global loc function name> (Optional)
 
-The default loc function name is C<_>.
+The default global loc function name is C<_>. 
+
+    loc => 'loc'
+
+=item C<loc_func> => I<CodeRef>  (Optional)
+
+Use a custom global localization function instead of default localization
+function.
+
+    loc_func => sub {
+            my ($self,$lang_handle) = @_;
+
+            ...
+
+            return $text;
+    }
 
 =back
 
@@ -380,10 +413,10 @@ setup fallback language. when speak() fails , fallback to this language.
 
 If you need to bind the locale directory structure like this:
 
-    po/en/LC_MESSAGES/app.po
-    po/en/LC_MESSAGES/app.mo
-    po/zh_tw/LC_MESSAGES/app.po
-    po/zh_tw/LC_MESSAGES/app.mo
+    path/to/locale/en/LC_MESSAGES/app.po
+    path/to/locale/en/LC_MESSAGES/app.mo
+    path/to/locale/zh_tw/LC_MESSAGES/app.po
+    path/to/locale/zh_tw/LC_MESSAGES/app.mo
 
 You can just pass the C<locale> option:
 
