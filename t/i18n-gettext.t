@@ -3,7 +3,7 @@ use warnings;
 use strict;
 use lib 'lib';
 use utf8;
-use Test::More tests => 8;
+use Test::More tests => 9;
 BEGIN {
     use_ok 'I18N::Handle';
 }
@@ -22,6 +22,7 @@ BEGIN {
     is( _(' pt') , ' pt' , 'default' );
 
     $hl->speak( 'zh-tw' );
+    is($hl->speaking() , 'zh-tw');
     is( _(' pt') , ' 分' , 'zh-tw' );
 
     $hl->speak( 'zh_TW' );
@@ -36,5 +37,4 @@ BEGIN {
     is_deeply( \@langs , [ 'en', 'zh-tw' ] , '[ en , zh-tw ]' );
 
     $hl->accept( 'en' );
-
 }

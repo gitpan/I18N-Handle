@@ -6,7 +6,7 @@ use I18N::Handle::Locale;
 use File::Find::Rule;
 use Locale::Maketext::Lexicon ();
 
-our $VERSION = '0.041';
+our $VERSION = '0.042';
 
 has base => ( is => 'rw' );
 
@@ -155,6 +155,12 @@ sub _scan_locale_files {
         $langs{ $self->_unify_langtag($tag )  } = [ Gettext => $file ];
     }
     return %langs;
+}
+
+
+sub speaking {
+    my $self = shift;
+    return $self->current();
 }
 
 sub speak {
