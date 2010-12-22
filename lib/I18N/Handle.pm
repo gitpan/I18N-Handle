@@ -6,7 +6,7 @@ use I18N::Handle::Locale;
 use File::Find::Rule;
 use Locale::Maketext::Lexicon ();
 
-our $VERSION = '0.042';
+our $VERSION = '0.043';
 
 has base => ( is => 'rw' );
 
@@ -214,12 +214,12 @@ sub install_global_loc {
         my @stringified_args = map {"$_"} @_;
         my $result = eval { ${$dlh}->maketext(@stringified_args) };
         if ($@) {
-            warn $@;
             # Sometimes Locale::Maketext fails to localize a string and throws
             # an exception instead.  In that case, we just return the input.
+            warn $@;
             return join(' ', @stringified_args);
         }
-        return $result;
+        return $result || @_;
     };
 
     {
