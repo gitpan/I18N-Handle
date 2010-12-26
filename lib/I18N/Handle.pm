@@ -6,7 +6,7 @@ use I18N::Handle::Locale;
 use File::Find::Rule;
 use Locale::Maketext::Lexicon ();
 
-our $VERSION = '0.043';
+our $VERSION = '0.05';
 
 has base => ( is => 'rw' );
 
@@ -98,20 +98,20 @@ sub BUILD {
     $self->base( I18N::Handle::Locale->new( \%import ) );
     $self->base->init;
 
+    return $self if $args{no_global_loc};
 
     my $loc_name = $args{'loc'} || '_';
-
     if( $args{loc_func} ) {
         my $loc_func = $args{loc_func};
         {
             no strict 'refs';
             no warnings 'redefine';
             *{ '::'.$loc_name } = sub { 
-                return $loc_func->( $self, $self->base->get_dynamicLH );
+                return $loc_func->( $self, $self->base->get_current_handle );
             };
         }
     } else {
-        __PACKAGE__->install_global_loc( $loc_name , $self->base->get_dynamicLH );
+        $self->install_global_loc( $loc_name , $self->base->get_current_handle );
     }
     return $self;
 }
@@ -157,7 +157,6 @@ sub _scan_locale_files {
     return %langs;
 }
 
-
 sub speaking {
     my $self = shift;
     return $self->current();
@@ -197,38 +196,14 @@ sub fallback {
 }
 
 sub install_global_loc {
-    my ($class, $loc_name , $dlh) = @_;
-
-    my $loc_method = sub {
-
-        # Retain compatibility with people using "-e _" etc.
-        return \*_ unless @_; # Needed for perl 5.8
-
-        # When $_[0] is undef, return undef.  When it is '', return ''.
-        no warnings 'uninitialized';
-        return $_[0] unless (length $_[0]);
-
-        local $@;
-        # Force stringification to stop Locale::Maketext from choking on
-        # things like DateTime objects.
-        my @stringified_args = map {"$_"} @_;
-        my $result = eval { ${$dlh}->maketext(@stringified_args) };
-        if ($@) {
-            # Sometimes Locale::Maketext fails to localize a string and throws
-            # an exception instead.  In that case, we just return the input.
-            warn $@;
-            return join(' ', @stringified_args);
-        }
-        return $result || @_;
-    };
-
+    my ( $self, $loc_name ) = @_;
+    my $loc_method = $self->base->get_loc_method();
     {
         no strict 'refs';
         no warnings 'redefine';
         *{ '::'.$loc_name } = $loc_method;
     }
 }
-
 
 __PACKAGE__->meta->make_immutable;
 1;
@@ -334,11 +309,15 @@ will be found. can you can get these langauges:
 
 =over 4
 
-=item C<style> => I<style>  ... (Optional)
+=item no_global_loc => bool
+
+Do not install global locale method C<"_">. 
+
+=item style => style  ... (Optional)
 
 The style could be C<gettext>.
 
-=item C<loc> => I<global loc function name> (Optional)
+=item loc => global loc function name (Optional)
 
 The default global loc function name is C<_>. 
 
